@@ -83,6 +83,7 @@ $env:MY_BASE_URL="https://api.openai.com/v1"
 2. yolo_data 目录中有待处理 PNG 文件。
 3. assets/mat 中有与 PNG 同名的 MAT 文件。
 4. chroma_db 已构建（见下一节）。
+5. 训练YOLO模型可以使用release中的标注文件，并导出为YOLO格式。
 
 ## 5. 构建 RAG 向量库
 
