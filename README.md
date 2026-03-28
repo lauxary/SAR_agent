@@ -1,213 +1,178 @@
 # SAR_agent
 
-一个面向太赫兹 SAR 场景的实验项目，融合了：
+面向 SAR 目标识别的多模块实验项目，融合三类信息：
 
-- 复数域物理特征提取（SCR、相位方差）
-- YOLO 视觉先验定位
-- RAG 文献检索增强
-- LLM 语义推理判别
+1. 视觉先验：YOLO 检测得到目标显著区域。
+2. 物理特征：从复数 SAR 矩阵中提取 SCR、相位方差。
+3. 认知推理：RAG 检索 + LLM 输出材质判断。
 
-本 README 目标是让新同学可以从 0 到 1 跑通完整流程。
+本 README 基于当前仓库真实结构编写，目标是让你快速跑通示例流程并理解关键模块。
 
-## 1. 项目功能概览
+## 1. 当前项目结构
 
-本项目包含三条主要链路：
+核心目录：
 
-1. 数据准备链路：`mat_to_png.py`
-2. 单样本推理链路：`run_yolo_inference.py` + `sar_rag_agent.py`（或 `sar_pipeline_main.py`）
-3. 批量自动化链路：`main_batch_pipeline.py`
+- assets/mat：原始 MAT 数据。
+- assets/png：MAT 转换后的 PNG 备份目录。
+- yolo_data：主流程待处理 PNG 输入目录。
+- knowledge：RAG 文献目录（当前包含 AD0859917.pdf）。
+- chroma_db：向量数据库持久化目录。
+- out/csv：批量推理结果 CSV 输出目录。
+- src：核心模块代码。
+- examples：主流程入口脚本。
+- resources：项目配置与环境变量读取。
 
-其中 RAG 向量库由 `build_rag_db.py` 预先构建。
+核心文件：
 
-## 2. 目录说明
+- examples/main.py：主入口（推荐）。
+- src/vision_detector.py：YOLO 检测封装。
+- src/physics_engine.py：复数矩阵解析与物理特征提取。
+- src/cognitive_agent.py：RAG 检索 + LLM 推理。
+- resources/config.py：统一路径、权重、API 配置。
+- build_rag_db.py：构建 Chroma 向量库。
+- SAR_Dataset/train_yolo.py：YOLO 训练脚本。
+- plot_metrics.py：读取结果 CSV 并绘制混淆矩阵。
 
-建议重点关注以下目录/文件：
+## 2. 环境准备
 
-- `mat/`：原始 `.mat` 复数数据
-- `png/`：`mat_to_png.py` 生成的 PNG 幅度图
-- `SAR_Dataset/`：YOLO 训练与验证数据集
-- `knowlodge/`：RAG 使用的论文 PDF
-- `chroma_db/`：RAG 向量数据库落盘目录
-- `yolo_outputs/`：YOLO 推理后输出的标签与可视化结果
-- `requirements.txt`：Python 依赖
+推荐 Python 版本：3.10 或 3.11。
 
-核心脚本：
+安装依赖：
 
-- `mat_to_png.py`：`.mat -> .png`
-- `SAR_Dataset/train_yolo.py`：训练 YOLO
-- `run_yolo_inference.py`：YOLO 单图推理并导出标签
-- `build_rag_db.py`：构建/刷新 Chroma 向量库
-- `sar_rag_agent.py`：YOLO + 物理特征 + RAG + LLM 单样本推理
-- `main_batch_pipeline.py`：批量样本自动评估并导出 CSV
+```bash
+pip install -r requirements.txt
+```
 
-## 3. 环境准备
+可选：若你想提前消除 Chroma 的 LangChain 弃用警告，可额外安装：
 
-### 3.1 Python 版本
+```bash
+pip install -U langchain-chroma
+```
 
-推荐：Python 3.10 或 3.11。
+## 3. 必要配置
 
-### 3.2 创建并激活虚拟环境（可选但推荐）
+主流程从 resources/config.py 读取环境变量。
 
-Windows PowerShell：
+必须设置：
+
+- MY_API_KEY：你的模型服务密钥。
+
+可选设置：
+
+- MY_BASE_URL：默认是 https://api.openai.com/v1。
+
+Linux/WSL 示例：
+
+```bash
+export MY_API_KEY="your_key"
+export MY_BASE_URL="https://api.openai.com/v1"
+```
+
+PowerShell 示例：
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+$env:MY_API_KEY="your_key"
+$env:MY_BASE_URL="https://api.openai.com/v1"
 ```
 
-WSL / Linux：
+## 4. 先决条件检查
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
+在运行主流程前，请确认：
 
-### 3.3 安装依赖
+1. YOLO 权重文件存在于 resources/config.py 指定路径。
+2. yolo_data 目录中有待处理 PNG 文件。
+3. assets/mat 中有与 PNG 同名的 MAT 文件。
+4. chroma_db 已构建（见下一节）。
 
-```bash
-pip install -r requirements.txt
-```
+## 5. 构建 RAG 向量库
 
-## 4. 必要配置
-
-### 4.1 API Key 配置
-
-当前脚本中使用 `OpenAI(api_key=..., base_url="https://yunwu.ai/v1")`。
-
-你需要在以下脚本中把 API Key 改为自己的可用 Key：
-
-- `sar_rag_agent.py`
-- `sar_pipeline_main.py`
-- `main_batch_pipeline.py`
-
-### 4.2 模型可用性说明
-
-如果报错类似“模型无可用渠道（distributor）”，说明该模型在当前平台暂不可用。
-
-建议先使用：
-
-- `deepseek-chat`
-
-## 5. 快速开始（推荐顺序）
-
-### Step 1：将 MAT 转成 PNG
-
-```bash
-python mat_to_png.py
-```
-
-默认读取：`mat/rigui_001.mat`
-
-默认输出：`png/rigui_001.png`
-
-### Step 2（可选）：训练 YOLO
-
-进入数据集目录并训练：
-
-```bash
-cd SAR_Dataset
-python train_yolo.py
-```
-
-训练配置由 `sar_prior.yaml` 提供（当前为相对路径配置）。
-
-### Step 3：YOLO 单图推理，导出标签
-
-回到项目根目录执行：
-
-```bash
-python run_yolo_inference.py
-```
-
-输出标签位于：`yolo_outputs/labels/`
-
-### Step 4：构建 RAG 向量库
+执行：
 
 ```bash
 python build_rag_db.py
 ```
 
-默认读取论文：`knowlodge/AD0859917.pdf`
+注意：当前 build_rag_db.py 中 PDF 默认路径写为 knowlodge/AD0859917.pdf，而项目目录是 knowledge。
 
-默认向量库目录：`chroma_db/`
+你可以选择其一：
 
-### Step 5：运行单样本 SAR-RAG 推理
+1. 修改 build_rag_db.py 中的 PDF 路径为 knowledge/AD0859917.pdf。
+2. 新建一个 knowlodge 目录并放入 PDF。
 
-```bash
-python sar_rag_agent.py
-```
+构建成功后，向量索引会写入 chroma_db。
 
-你将看到：
+## 6. 运行主流程
 
-- SCR 与相位方差
-- 文献检索状态
-- LLM 分类、置信度与推理解释
-
-## 6. 批量推理（自动化）
-
-直接运行：
+推荐在项目根目录执行：
 
 ```bash
-python main_batch_pipeline.py
+python examples/main.py
 ```
 
-脚本会：
+流程说明：
 
-1. 加载 YOLO 权重
-2. 遍历 `SAR_Dataset/images/val/*.png`
-3. 匹配 `mat/` 下同名 `.mat`
-4. 计算物理特征并调用 RAG + LLM
-5. 导出 `final_experiment_results.csv`
+1. 从 yolo_data 读取 PNG。
+2. 用 YOLO 预测目标框。
+3. 用同名 MAT 提取 SCR 与相位方差。
+4. 调用 RAG + LLM 输出分类、置信度与解释。
+5. 将结果写入 out/csv/final_experiment_results.csv。
 
-## 7. 数据命名与匹配规则
+日志输出：
 
-批量流程按“同名匹配”关联 PNG 与 MAT：
+- 控制台实时日志。
+- 根目录 agent_run.log 持久化日志。
 
-- 例如 `SAR_Dataset/images/val/rigui_257.png`
-- 对应 `mat/rigui_257.mat`
+## 7. 训练 YOLO（可选）
 
-若同名 MAT 不存在，样本会被跳过。
+执行：
 
-## 8. 常见问题
+```bash
+python SAR_Dataset/train_yolo.py
+```
 
-### Q1：`Authentication failed` 无法 push 到 GitHub
+当前脚本默认使用 yolov8n.pt，并读取 SAR_Dataset/sar_prior.yaml。
 
-- 原因：HTTPS 密码鉴权已禁用
-- 方案：改用 SSH 或 PAT
+## 8. 指标绘图（可选）
 
-### Q2：模型报 `503` / `无可用渠道`
+执行：
 
-- 原因：当前平台不支持该模型
-- 方案：切回 `deepseek-chat` 或改用平台支持的模型 ID
+```bash
+python plot_metrics.py
+```
 
-### Q3：找不到文件（路径问题）
+默认读取 results/final_experiment_results.csv，并输出 results/confusion_matrix_IEEE.png。
 
-- 先确认在项目根目录执行脚本
-- 本项目大部分脚本已改为相对路径 + `os.path.dirname(__file__)`
+如果你的主流程结果写在 out/csv，请先同步到 results 或修改脚本内 CSV_PATH。
 
-### Q4：RAG 检索报错（Chroma / Embedding）
+## 9. 数据命名规则
 
-- 先执行 `python build_rag_db.py`
-- 再执行推理脚本
+主流程使用文件名同名匹配：
 
-## 9. 建议的最小可复现实验
+- yolo_data/rigui_001.png
+- assets/mat/rigui_001.mat
 
-从空环境开始，按以下命令顺序：
+若 MAT 缺失，对应样本会被跳过。
+
+## 10. 常见问题
+
+1. 报错 module 'resource' has no attribute getrlimit
+原因通常是自定义目录名与 Python 标准库 resource 冲突。当前项目已使用 resources 目录规避。
+
+2. 报错系统环境变量 MY_API_KEY 未设置
+先按第 3 节设置环境变量后再运行。
+
+3. Chroma 弃用警告
+当前代码仍使用 langchain_community.vectorstores.Chroma，可运行但会提示弃用；后续可迁移到 langchain_chroma。
+
+4. 运行时找不到权重
+检查 resources/config.py 中 YOLO_WEIGHTS 对应路径是否存在。
+
+## 11. 推荐运行顺序
 
 ```bash
 pip install -r requirements.txt
-python mat_to_png.py
 python build_rag_db.py
-python run_yolo_inference.py
-python sar_rag_agent.py
+python examples/main.py
 ```
 
-## 10. 安全提示
-
-- 不要把真实 API Key 提交到 Git 仓库
-- 建议改用环境变量管理密钥
-- 若密钥泄露，请立即在平台侧吊销并重建
-
----
-
-如需团队协作版 README（包含实验记录模板、结果对比表、参数追踪规范），可以在此基础上继续扩展。
+如需完整实验链路，再执行训练与评估脚本。

@@ -11,3 +11,5 @@ opencv-python
 matplotlib
 ultralytics
 pandas
+seaborn 
+scikit-learn
