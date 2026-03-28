@@ -38,8 +38,24 @@ wheels/
 *.exe
 *.mat
 chroma_db/
-SAR_Dataset/images/
-SAR_Dataset/labels/
+
+# Keep empty dataset folder structure with .gitkeep only
+SAR_Dataset/images/*
+!SAR_Dataset/images/train/
+!SAR_Dataset/images/val/
+SAR_Dataset/images/train/*
+SAR_Dataset/images/val/*
+!SAR_Dataset/images/train/.gitkeep
+!SAR_Dataset/images/val/.gitkeep
+
+SAR_Dataset/labels/*
+!SAR_Dataset/labels/train/
+!SAR_Dataset/labels/val/
+SAR_Dataset/labels/train/*
+SAR_Dataset/labels/val/*
+!SAR_Dataset/labels/train/.gitkeep
+!SAR_Dataset/labels/val/.gitkeep
+
 SAR_Dataset/runs/
 mat/
 png/
