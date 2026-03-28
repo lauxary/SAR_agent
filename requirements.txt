@@ -1,0 +1,13 @@
+langchain 
+langchain-community 
+langchain-huggingface 
+chromadb 
+pymupdf 
+sentence-transformers
+h5py
+numpy
+openai
+opencv-python
+matplotlib
+ultralytics
+pandas

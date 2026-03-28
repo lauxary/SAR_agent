@@ -1,0 +1,6 @@
+path: . # 相对路径
+train: images/train
+val: images/val
+
+nc: 1 # Number of Classes: 严格限定为 1 维
+names: ['anomaly_target'] # 统一命名为异常目标
